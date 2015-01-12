@@ -171,7 +171,16 @@ class TranslateableBehavior extends Behavior
         }
         /** @var \yii\db\ActiveQuery $relation */
         $relation = $this->owner->getRelation($this->relation);
-        $model->{key($relation->link)} = $this->owner->getPrimaryKey();
+
+        // Composite primary key
+        if (is_array($this->owner->getPrimaryKey())) {
+            foreach ($this->owner->getPrimaryKey() as $k => $v) {
+                $model->{$k} = $v;
+            }
+        } else {
+            $model->{key($relation->link)} = $this->owner->getPrimaryKey();
+        }
+
         return $model->save();
 
     }
@@ -232,13 +241,33 @@ class TranslateableBehavior extends Behavior
         /** @var ActiveRecord $class */
         $class = $relation->modelClass;
         if ($this->owner->getPrimarykey()) {
-            $translation = $class::findOne(
-                [$this->languageField => $language, key($relation->link) => $this->owner->getPrimarykey()]
-            );
+            // Composite primary key
+            if (is_array($this->owner->getPrimarykey())) {
+                $conditions = [$this->languageField => $language];
+
+                foreach ($this->owner->getPrimarykey() as $k => $v) {
+                    $conditions[$k] = $v;
+                }
+
+                $translation = $class::findOne($conditions);
+            } else {
+                $translation = $class::findOne(
+                    [$this->languageField => $language, key($relation->link) => $this->owner->getPrimarykey()]
+                );
+            }
         }
         if ($translation === null) {
             $translation = new $class;
-            $translation->{key($relation->link)} = $this->owner->getPrimaryKey();
+
+            // Composite primary key
+            if (is_array($this->owner->getPrimaryKey())) {
+                foreach ($this->owner->getPrimaryKey() as $k => $v) {
+                    $translation->{$k} = $v;
+                }
+            } else {
+                $translation->{key($relation->link)} = $this->owner->getPrimaryKey();
+            }
+
             $translation->{$this->languageField} = $language;
         }
 
@@ -263,4 +292,4 @@ class TranslateableBehavior extends Behavior
             }
         }
     }
-} 
+}
